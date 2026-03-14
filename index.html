@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
-    <title>QR Converter · 二维码转换器</title>
+    <title>QR Converter</title>
     <!-- 使用稳定 CDN 引入二维码库 -->
     <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
@@ -59,7 +59,7 @@
             color: initial;
             background: none;
             -webkit-text-fill-color: initial;
-            font-size: 2.7rem; /* 与之前 span 大小一致 */
+            font-size: 2.7rem;
             line-height: 1;
         }
 
@@ -305,6 +305,43 @@
             font-weight: 500;
         }
 
+        /* 颜色选择器行 */
+        .color-row {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 1.2rem;
+            margin: 1rem 0 0.2rem 0;
+            background: rgba(255,255,255,0.4);
+            padding: 0.8rem 1rem;
+            border-radius: 3rem;
+            border: 1px solid rgba(255,255,255,0.6);
+        }
+        .color-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.95rem;
+            color: #1e384f;
+        }
+        .color-item input[type="color"] {
+            width: 40px;
+            height: 40px;
+            border: 2px solid white;
+            border-radius: 50%;
+            cursor: pointer;
+            background: transparent;
+            padding: 2px;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+        .color-item input[type="color"]::-webkit-color-swatch-wrapper {
+            padding: 0;
+        }
+        .color-item input[type="color"]::-webkit-color-swatch {
+            border: none;
+            border-radius: 50%;
+        }
+
         /* 下载按钮单独一行 */
         .download-btn {
             margin-top: 0.8rem;
@@ -330,6 +367,19 @@
             <textarea id="textInput" class="input-field" placeholder="输入文本 / 链接 … 例如：https://example.com">https://qr.example</textarea>
             <!-- 字节计数器 -->
             <div id="byteCounter" class="byte-counter">📦 字节数: 0 / 2331</div>
+            
+            <!-- 新增颜色选择区域 -->
+            <div class="color-row">
+                <div class="color-item">
+                    <span>🎨 前景色</span>
+                    <input type="color" id="foreColor" value="#000000" title="二维码颜色">
+                </div>
+                <div class="color-item">
+                    <span>🖼️ 背景色</span>
+                    <input type="color" id="backColor" value="#ffffff" title="背景颜色">
+                </div>
+            </div>
+
             <div class="inline-row" style="justify-content: space-between; width: 100%;">
                 <button class="button" id="generateBtn"><span>⚡</span> 生成二维码</button>
                 <button class="button secondary" id="clearTextBtn" title="清空输入框">🗑️ 清空</button>
@@ -338,7 +388,7 @@
             <div id="generateError" class="error-tip"></div>
             <!-- 二维码画布 -->
             <canvas id="qrCanvas" class="qr-canvas" width="280" height="280"></canvas>
-            <!-- 新增下载按钮（英文命名） -->
+            <!-- 下载按钮（英文命名） -->
             <button class="button secondary download-btn" id="downloadBtn">📥 下载图片 (Download Image)</button>
         </div>
 
@@ -382,6 +432,8 @@
         const generateError = document.getElementById('generateError');
         const byteCounter = document.getElementById('byteCounter');
         const downloadBtn = document.getElementById('downloadBtn');
+        const foreColorInput = document.getElementById('foreColor');
+        const backColorInput = document.getElementById('backColor');
 
         const fileInput = document.getElementById('qrFileInput');
         const fileInfo = document.getElementById('file-info');
@@ -432,7 +484,7 @@
             }
         }
 
-        // ---------- 生成二维码 ----------
+        // ---------- 生成二维码 (使用自定义颜色) ----------
         function drawQRCodeToCanvas(text) {
             clearGenerateError();
 
@@ -453,6 +505,10 @@
                 return false;
             }
 
+            // 获取当前选中的颜色
+            const foreColor = foreColorInput.value;
+            const backColor = backColorInput.value;
+
             try {
                 const qrInstance = qrcode(0, 'M');
                 qrInstance.addData(text);
@@ -467,10 +523,12 @@
                 qrCanvas.height = size;
 
                 const ctx = qrCanvas.getContext('2d');
-                ctx.fillStyle = '#ffffff';
+                // 背景色
+                ctx.fillStyle = backColor;
                 ctx.fillRect(0, 0, size, size);
 
-                ctx.fillStyle = '#162b44';
+                // 前景色
+                ctx.fillStyle = foreColor;
                 for (let row = 0; row < modules; row++) {
                     for (let col = 0; col < modules; col++) {
                         if (qrInstance.isDark(row, col)) {
@@ -500,13 +558,12 @@
 
         // 下载二维码图片
         function downloadQR() {
-            // 检查画布是否有内容（非全白？简单检查尺寸）
             if (qrCanvas.width === 0 || qrCanvas.height === 0) {
                 alert('没有可下载的二维码，请先生成二维码。');
                 return;
             }
             const link = document.createElement('a');
-            link.download = 'qrcode.png'; // 下载文件名
+            link.download = 'qrcode.png';
             link.href = qrCanvas.toDataURL('image/png');
             link.click();
         }
@@ -514,6 +571,8 @@
         // 初始化
         function init() {
             textInput.value = DEFAULT_TEXT;
+            foreColorInput.value = '#000000';
+            backColorInput.value = '#ffffff';
             updateByteCounterAndButton();
             drawQRCodeToCanvas(DEFAULT_TEXT);
         }
@@ -521,22 +580,39 @@
 
         // ---------- 事件绑定 ----------
 
+        // 文本输入
         textInput.addEventListener('input', function() {
             updateByteCounterAndButton();
         });
 
+        // 生成按钮
         generateBtn.addEventListener('click', function() {
             if (generateBtn.disabled) return;
             drawQRCodeToCanvas(textInput.value);
         });
 
+        // 清空按钮
         clearTextBtn.addEventListener('click', function() {
             textInput.value = DEFAULT_TEXT;
+            foreColorInput.value = '#000000';
+            backColorInput.value = '#ffffff';
             updateByteCounterAndButton();
             drawQRCodeToCanvas(DEFAULT_TEXT);
         });
 
-        // 下载按钮事件
+        // 颜色变化时自动重新生成二维码（实时预览）
+        foreColorInput.addEventListener('input', function() {
+            if (!generateBtn.disabled) {
+                drawQRCodeToCanvas(textInput.value);
+            }
+        });
+        backColorInput.addEventListener('input', function() {
+            if (!generateBtn.disabled) {
+                drawQRCodeToCanvas(textInput.value);
+            }
+        });
+
+        // 下载按钮
         downloadBtn.addEventListener('click', downloadQR);
 
         // Ctrl+Enter 快捷生成
@@ -575,6 +651,7 @@
                         showDecodeResult(code.data);
                         textInput.value = code.data; // 回填到左侧
                         updateByteCounterAndButton(); // 更新计数器并可能禁用按钮
+                        // 回填后不自动生成，保持原有颜色
                     } else {
                         showDecodeResult(null);
                     }
