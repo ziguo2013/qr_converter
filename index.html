@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
-    <title>QR Converter</title>
+    <title>QR Converter · 中文完美支持</title>
     <!-- 使用稳定 CDN 引入二维码库 -->
     <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.min.js"></script>
@@ -47,7 +47,6 @@
             gap: 0.5rem;
         }
 
-        /* 主标题渐变只应用于文字部分，emoji 保持原始颜色 */
         .gradient-text {
             background: linear-gradient(145deg, #162b44, #274d6e);
             -webkit-background-clip: text;
@@ -253,10 +252,10 @@
             margin: 1rem 0 0.5rem;
             border: 1px solid #dbe5f0;
             color: #162b44;
-            font-family: 'Fira Mono', monospace;
             word-break: break-all;
             max-height: 150px;
             overflow-y: auto;
+            user-select: none; /* 禁止选中文本，与按钮风格一致 */
         }
 
         .decode-placeholder {
@@ -305,7 +304,6 @@
             font-weight: 500;
         }
 
-        /* 颜色选择器行 */
         .color-row {
             display: flex;
             flex-wrap: wrap;
@@ -342,7 +340,6 @@
             border-radius: 50%;
         }
 
-        /* 下载按钮单独一行 */
         .download-btn {
             margin-top: 0.8rem;
             align-self: center;
@@ -352,11 +349,11 @@
 <body>
 <div class="glass-card">
     <h1>
-        <span class="emoji-fix">🔄📱</span>
+        <span class="emoji-fix">🔄</span>
         <span class="gradient-text">二维码转换器</span>
     </h1>
     <div class="subhead">
-        <span>文本 ↔ 二维码 · 纯本地处理 · 最大2331字节</span>
+        <span>文本 ↔ 二维码  · 最大2331字节 · 中文支持</span>
         <span class="english-badge">QR Converter</span>
     </div>
 
@@ -364,11 +361,11 @@
         <!-- 左侧：生成二维码 -->
         <div class="panel">
             <h2><span>⬇️</span> 生成二维码</h2>
-            <textarea id="textInput" class="input-field" placeholder="输入文本 / 链接 … 例如：https://example.com">https://qr.example</textarea>
+            <textarea id="textInput" class="input-field" placeholder="输入文本 / 链接 … 例如：https://example.com 或 中文测试">你好，世界！</textarea>
             <!-- 字节计数器 -->
             <div id="byteCounter" class="byte-counter">📦 字节数: 0 / 2331</div>
             
-            <!-- 新增颜色选择区域 -->
+            <!-- 颜色选择区域 -->
             <div class="color-row">
                 <div class="color-item">
                     <span>🎨 前景色</span>
@@ -388,7 +385,7 @@
             <div id="generateError" class="error-tip"></div>
             <!-- 二维码画布 -->
             <canvas id="qrCanvas" class="qr-canvas" width="280" height="280"></canvas>
-            <!-- 下载按钮（英文命名） -->
+            <!-- 下载按钮 -->
             <button class="button secondary download-btn" id="downloadBtn">📥 下载图片 (Download Image)</button>
         </div>
 
@@ -414,7 +411,7 @@
     </div>
 
     <div class="footer-note">
-        ⚡ 基于 <code>qrcode-generator</code> 生成 · <code>jsQR</code> 识别 · 最大容量：版本40 / 纠错M / 2331字节
+        ⚡ 基于 <code>qrcode-generator</code> 生成 · <code>jsQR</code> 识别 · 最大容量：版本40 / 纠错M / 2331字节 · 中文使用UTF-8字节字符串
     </div>
 </div>
 
@@ -422,7 +419,7 @@
     (function() {
         // ---------- 常量 ----------
         const MAX_BYTES = 2331; // 版本40 纠错M 二进制最大字节数
-        const DEFAULT_TEXT = 'https://qr.example';
+        const DEFAULT_TEXT = '你好，世界！'; // 默认中文示例
 
         // ---------- DOM 元素 ----------
         const textInput = document.getElementById('textInput');
@@ -458,7 +455,7 @@
             }
         }
 
-        // 获取 UTF-8 字节长度
+        // 获取 UTF-8 字节长度 (用于计数)
         function getUTF8ByteLength(str) {
             if (!str) return 0;
             return new TextEncoder().encode(str).length;
@@ -484,7 +481,7 @@
             }
         }
 
-        // ---------- 生成二维码 (使用自定义颜色) ----------
+        // ---------- 生成二维码 (使用UTF-8字节字符串，完美支持中文) ----------
         function drawQRCodeToCanvas(text) {
             clearGenerateError();
 
@@ -511,7 +508,18 @@
 
             try {
                 const qrInstance = qrcode(0, 'M');
-                qrInstance.addData(text);
+
+                // 关键修复：将文本编码为UTF-8字节数组，然后将每个字节转换为对应字符
+                // 这样生成的字符串中每个字符的charCode就是字节值，以'Byte'模式传入时，
+                // 库内部遍历字符调用charCodeAt就能得到正确的字节值，生成正确的二维码
+                const encoder = new TextEncoder();
+                const bytes = encoder.encode(text); // Uint8Array
+                let byteString = '';
+                for (let i = 0; i < bytes.length; i++) {
+                    byteString += String.fromCharCode(bytes[i]);
+                }
+                qrInstance.addData(byteString, 'Byte');
+
                 qrInstance.make();
 
                 const cellSize = 4;
@@ -600,7 +608,7 @@
             drawQRCodeToCanvas(DEFAULT_TEXT);
         });
 
-        // 颜色变化时自动重新生成二维码（实时预览）
+        // 颜色变化时自动重新生成二维码
         foreColorInput.addEventListener('input', function() {
             if (!generateBtn.disabled) {
                 drawQRCodeToCanvas(textInput.value);
