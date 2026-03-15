@@ -349,11 +349,11 @@
 <body>
 <div class="glass-card">
     <h1>
-        <span class="emoji-fix">🔄</span>
+        <span class="emoji-fix">🔄📱</span>
         <span class="gradient-text">二维码转换器</span>
     </h1>
     <div class="subhead">
-        <span>文本 ↔ 二维码  · 最大2331字节 · 中文支持</span>
+        <span>文本 ↔ 二维码 · 纯本地处理 · 最大2331字节 · 完美中文支持</span>
         <span class="english-badge">QR Converter</span>
     </div>
 
@@ -632,7 +632,7 @@
             }
         });
 
-        // ---------- 识别二维码 ----------
+        // ---------- 识别二维码 (优化：限制尺寸+异步，防止卡死) ----------
         decodeBtn.addEventListener('click', function() {
             const file = fileInput.files[0];
             if (!file) {
@@ -640,29 +640,53 @@
                 return;
             }
 
+            // 显示加载中
+            decodeResult.innerHTML = '<span style="color:#3a5470;">⏳ 正在识别中...</span>';
+
             const reader = new FileReader();
             reader.onload = function(e) {
                 const img = new Image();
                 img.onload = function() {
-                    const canvas = document.createElement('canvas');
-                    canvas.width = img.width;
-                    canvas.height = img.height;
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(img, 0, 0, img.width, img.height);
-                    const imageData = ctx.getImageData(0, 0, img.width, img.height);
-
-                    const code = jsQR(imageData.data, img.width, img.height, {
-                        inversionAttempts: "dontInvert",
-                    });
-
-                    if (code) {
-                        showDecodeResult(code.data);
-                        textInput.value = code.data; // 回填到左侧
-                        updateByteCounterAndButton(); // 更新计数器并可能禁用按钮
-                        // 回填后不自动生成，保持原有颜色
-                    } else {
-                        showDecodeResult(null);
+                    // 限制图片最大尺寸为1024px，避免计算量过大
+                    let width = img.width;
+                    let height = img.height;
+                    const maxSize = 1024;
+                    if (width > maxSize || height > maxSize) {
+                        if (width > height) {
+                            height = Math.round(height * (maxSize / width));
+                            width = maxSize;
+                        } else {
+                            width = Math.round(width * (maxSize / height));
+                            height = maxSize;
+                        }
                     }
+
+                    const canvas = document.createElement('canvas');
+                    canvas.width = width;
+                    canvas.height = height;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, width, height);
+                    const imageData = ctx.getImageData(0, 0, width, height);
+
+                    // 使用 setTimeout 异步执行识别，避免阻塞UI
+                    setTimeout(() => {
+                        try {
+                            const code = jsQR(imageData.data, width, height, {
+                                inversionAttempts: "dontInvert",
+                            });
+
+                            if (code) {
+                                showDecodeResult(code.data);
+                                textInput.value = code.data;
+                                updateByteCounterAndButton();
+                            } else {
+                                showDecodeResult(null);
+                            }
+                        } catch (err) {
+                            console.error(err);
+                            showDecodeResult('识别过程出错', true);
+                        }
+                    }, 50);
                 };
                 img.src = e.target.result;
             };
