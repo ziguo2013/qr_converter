@@ -255,12 +255,13 @@
             word-break: break-all;
             max-height: 150px;
             overflow-y: auto;
-            user-select: none; /* 禁止选中文本，与按钮风格一致 */
+            /* 移除 user-select: none，让内容默认可选中 */
         }
 
         .decode-placeholder {
             color: #8a9eb5;
             font-style: italic;
+            user-select: none; /* 占位提示不可选中 */
         }
 
         .footer-note {
